@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Administrador - Robinho Barber Shop</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* Paleta de cores e fontes do site original para consistência */
+        :root {
+            --bg-black: #000000;
+            --bg-dark: #0A0A0A;
+            --bg-card: #111111;
+            --accent-cream: #F5F5DC;
+            --text-light-gray: #CCCCCC;
+            --text-dark-gray: #888888;
+            --border-color: #222222;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light-gray);
+        }
+        h1, h2, h3, .font-display {
+            font-family: 'Lora', serif;
+        }
+
+        .text-cream { color: var(--accent-cream); }
+        .bg-cream { background-color: var(--accent-cream); }
+        .border-cream { border-color: var(--accent-cream); }
+
+        /* Estilização da barra de rolagem */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-black); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-cream); }
+        
+        /* Estilo para o Date Picker e Select */
+        input[type="date"], select {
+            color-scheme: dark;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) grayscale(100%) brightness(150%);
+            cursor: pointer;
+        }
+        .nav-link.active {
+            background-color: var(--bg-card);
+            color: white;
+        }
+        /* Estilo para navegação mobile ativa */
+        .mobile-nav .nav-link.active {
+            background-color: transparent;
+            color: var(--accent-cream);
+        }
+        .mobile-nav .nav-link:not(.active) {
+             color: var(--text-dark-gray);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="flex min-h-screen bg-bg-dark pb-20 md:pb-0">
+        <!-- Barra Lateral de Navegação (Desktop) -->
+        <aside class="w-64 bg-bg-black p-6 flex-shrink-0 flex-col justify-between hidden md:flex">
+            <div>
+                <div class="flex items-center gap-3 mb-10">
+                    <img src="https://media.licdn.com/dms/image/v2/D4E22AQGzltKs_w6yyQ/feedshare-shrink_800/B4EZh7iHZmHEAk-/0/1754419198007?e=1757548800&v=beta&t=yNpid3PSTKoh0cyE_P1pzvemNq2N4YKHhLvuFvXL51g" alt="Logo" class="h-12">
+                    <h1 class="text-white text-xl font-display">Admin</h1>
+                </div>
+                <nav class="flex flex-col space-y-2">
+                    <a href="#" id="nav-agenda" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md transition-colors active">
+                        <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                        <span>Agenda</span>
+                    </a>
+                    <a href="#" id="nav-analises" class="nav-link flex items-center gap-3 px-4 py-3 rounded-md transition-colors">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                        <span>Análises</span>
+                    </a>
+                </nav>
+            </div>
+            <div>
+                <a href="#" class="flex items-center gap-3 px-4 py-3 text-text-dark-gray hover:bg-bg-card hover:text-white rounded-md transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span>Sair</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Conteúdo da Agenda (Visível por padrão) -->
+        <main id="page-agenda" class="page-content flex-1 p-4 md:p-10">
+            <header class="mb-8">
+                <h2 class="text-3xl md:text-4xl font-display text-white">Agenda de Horários</h2>
+                <p class="text-text-dark-gray mt-1">Visualize todos os agendamentos futuros ou filtre por data.</p>
+            </header>
+            <div class="flex flex-col md:flex-row gap-4 mb-8 p-4 bg-bg-card border border-border-color rounded-md">
+                <div class="flex-1">
+                    <label for="date-filter" class="block text-sm font-medium text-text-dark-gray mb-1">Filtrar por Data</label>
+                    <input type="date" id="date-filter" class="w-full bg-bg-dark border border-border-color text-white p-2 rounded-md focus:outline-none focus:border-cream">
+                </div>
+                <div class="flex-1">
+                    <label for="barber-filter" class="block text-sm font-medium text-text-dark-gray mb-1">Filtrar por Barbeiro</label>
+                    <select id="barber-filter" class="w-full bg-bg-dark border border-border-color text-white p-2.5 rounded-md focus:outline-none focus:border-cream">
+                        <option value="todos">Todos os Barbeiros</option>
+                        <option value="Robinho Barber">Robinho Barber</option>
+                        <option value="Murilo Barber">Murilo Barber</option>
+                    </select>
+                </div>
+            </div>
+            <div class="bg-bg-card border border-border-color rounded-md overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="border-b border-border-color">
+                        <tr>
+                            <th class="p-4 text-sm font-semibold text-text-dark-gray uppercase tracking-wider">Data</th>
+                            <th class="p-4 text-sm font-semibold text-text-dark-gray uppercase tracking-wider">Horário</th>
+                            <th class="p-4 text-sm font-semibold text-text-dark-gray uppercase tracking-wider">Cliente</th>
+                            <th class="p-4 text-sm font-semibold text-text-dark-gray uppercase tracking-wider hidden md:table-cell">Barbeiro</th>
+                            <th class="p-4 text-sm font-semibold text-text-dark-gray uppercase tracking-wider text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appointments-list">
+                        <tr id="loading-state-agenda">
+                            <td colspan="5" class="text-center p-10 text-text-dark-gray">Carregando agendamentos...</td>
+                        </tr>
+                        <tr id="empty-state-agenda" class="hidden">
+                            <td colspan="5" class="text-center p-10">
+                                <div class="flex flex-col items-center">
+                                    <i data-lucide="calendar-x2" class="w-12 h-12 mx-auto text-text-dark-gray mb-4"></i>
+                                    <h3 class="text-lg font-semibold text-white">Nenhum agendamento encontrado</h3>
+                                    <p class="text-text-dark-gray mt-1 text-sm">Não há horários marcados para os filtros selecionados.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+        <!-- Conteúdo das Análises (Oculto por padrão) -->
+        <main id="page-analises" class="page-content flex-1 p-4 md:p-10 hidden">
+            <header class="mb-8">
+                <h2 class="text-3xl md:text-4xl font-display text-white">Análises de Desempenho</h2>
+                <p class="text-text-dark-gray mt-1">Métricas e gráficos sobre a movimentação da barbearia.</p>
+            </header>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-bg-card p-6 rounded-md border border-border-color">
+                    <h3 class="text-text-dark-gray text-sm font-medium uppercase">Faturamento Total</h3>
+                    <p id="total-revenue" class="text-3xl font-bold text-cream mt-2">R$ 0,00</p>
+                </div>
+                <div class="bg-bg-card p-6 rounded-md border border-border-color">
+                    <h3 class="text-text-dark-gray text-sm font-medium uppercase">Atendimentos Realizados</h3>
+                    <p id="total-appointments" class="text-3xl font-bold text-cream mt-2">0</p>
+                </div>
+                <div class="bg-bg-card p-6 rounded-md border border-border-color">
+                    <h3 class="text-text-dark-gray text-sm font-medium uppercase">Ticket Médio</h3>
+                    <p id="average-ticket" class="text-3xl font-bold text-cream mt-2">R$ 0,00</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-bg-card p-6 rounded-md border border-border-color">
+                    <h3 class="text-lg font-semibold text-white mb-4">Atendimentos por Barbeiro</h3>
+                    <div id="barber-chart-container"><canvas id="barber-chart"></canvas></div>
+                </div>
+                <div class="bg-bg-card p-6 rounded-md border border-border-color">
+                    <h3 class="text-lg font-semibold text-white mb-4">Movimentação dos Últimos 30 Dias</h3>
+                    <div id="movement-chart-container"><canvas id="movement-chart"></canvas></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Navegação Mobile -->
+        <nav class="mobile-nav md:hidden fixed bottom-0 left-0 right-0 bg-bg-black border-t border-border-color flex justify-around">
+            <a href="#" id="mobile-nav-agenda" class="nav-link flex-1 flex flex-col items-center justify-center p-3 active">
+                <i data-lucide="calendar-days" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Agenda</span>
+            </a>
+            <a href="#" id="mobile-nav-analises" class="nav-link flex-1 flex flex-col items-center justify-center p-3">
+                <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Análises</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Importa as funções necessárias do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCFHkn3UW-JLFWYsmXynGuteZiqTDe4Wtc",
+            authDomain: "robinho-barber.firebaseapp.com",
+            projectId: "robinho-barber",
+            storageBucket: "robinho-barber.appspot.com",
+            messagingSenderId: "919808290292",
+            appId: "1:919808290292:web:f9bd68abb039d35427dda1",
+            measurementId: "G-HWVGTFXR7K"
+        };
+
+        // Inicializa o Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Autenticação anônima
+        signInAnonymously(auth).catch((error) => {
+            console.error("Anonymous sign-in failed:", error);
+            alert("Falha ao conectar com o servidor.");
+        });
+
+        // --- LÓGICA DE NAVEGAÇÃO ---
+        const allNavLinks = document.querySelectorAll('.nav-link');
+        const pages = document.querySelectorAll('.page-content');
+        let chartsRendered = false;
+
+        allNavLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const coreId = link.id.replace('mobile-nav-', '').replace('nav-', '');
+                const targetPageId = `page-${coreId}`;
+                
+                pages.forEach(page => {
+                    page.classList.toggle('hidden', page.id !== targetPageId);
+                });
+
+                allNavLinks.forEach(nav => {
+                    const navCoreId = nav.id.replace('mobile-nav-', '').replace('nav-', '');
+                    nav.classList.toggle('active', navCoreId === coreId);
+                });
+
+                if(targetPageId === 'page-analises' && !chartsRendered) {
+                    fetchAndProcessData();
+                    chartsRendered = true;
+                }
+            });
+        });
+
+        // --- LÓGICA DA AGENDA ---
+        const dateFilter = document.getElementById('date-filter');
+        const barberFilter = document.getElementById('barber-filter');
+        const appointmentsList = document.getElementById('appointments-list');
+        const loadingStateAgenda = document.getElementById('loading-state-agenda');
+        const emptyStateAgenda = document.getElementById('empty-state-agenda');
+
+        const fetchAppointments = async () => {
+            loadingStateAgenda.style.display = 'table-row';
+            emptyStateAgenda.style.display = 'none';
+            appointmentsList.innerHTML = '';
+            appointmentsList.appendChild(loadingStateAgenda);
+            appointmentsList.appendChild(emptyStateAgenda);
+
+            const selectedDate = dateFilter.value;
+            const selectedBarber = barberFilter.value;
+
+            try {
+                const appointmentsQuery = query(collection(db, "appointments"));
+                const querySnapshot = await getDocs(appointmentsQuery);
+                
+                const allAppointments = [];
+                querySnapshot.forEach(doc => allAppointments.push(doc.data()));
+                
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const todayString = today.toISOString().split('T')[0];
+
+                const filteredAppointments = allAppointments.filter(appt => {
+                    const isContinuation = appt.isContinuation === true;
+                    let dateMatch = selectedDate ? appt.date === selectedDate : appt.date >= todayString;
+                    const barberMatch = selectedBarber === 'todos' || appt.barber === selectedBarber;
+                    return !isContinuation && dateMatch && barberMatch;
+                });
+
+                filteredAppointments.sort((a, b) => {
+                    if (a.date > b.date) return 1;
+                    if (a.date < b.date) return -1;
+                    return a.time.localeCompare(b.time);
+                });
+
+                loadingStateAgenda.style.display = 'none';
+                appointmentsList.innerHTML = '';
+
+                if (filteredAppointments.length === 0) {
+                    appointmentsList.appendChild(emptyStateAgenda);
+                    emptyStateAgenda.style.display = 'table-row';
+                } else {
+                    filteredAppointments.forEach(appointment => {
+                        const appointmentElement = createAppointmentElement(appointment);
+                        appointmentsList.appendChild(appointmentElement);
+                    });
+                }
+            } catch (error) {
+                console.error("Erro ao buscar agendamentos: ", error);
+                loadingStateAgenda.style.display = 'none';
+                appointmentsList.innerHTML = `<tr><td colspan="5" class="text-red-500 text-center p-10">Ocorreu um erro ao carregar os dados.</td></tr>`;
+            }
+            lucide.createIcons();
+        };
+
+        const createAppointmentElement = (data) => {
+            const element = document.createElement('tr');
+            element.className = 'border-b border-border-color hover:bg-bg-dark transition-colors';
+            
+            const hasPhone = data.clientPhone && typeof data.clientPhone === 'string';
+            const [year, month, day] = data.date.split('-');
+            const formattedDate = `${day}/${month}/${year}`;
+            
+            const reminderLink = hasPhone ? `https://wa.me/${data.clientPhone.replace(/\D/g, '')}?text=Olá, ${data.clientName}. Lembrete do seu horário na Robinho Barber Shop no dia ${formattedDate} às ${data.time.substring(0,5)}!` : '#';
+            const reminderLinkClass = hasPhone ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-600 cursor-not-allowed opacity-50';
+            
+            const cancellationMessage = `Olá, ${data.clientName}. Informamos que seu agendamento na Robinho Barber Shop para o dia ${formattedDate} às ${data.time.substring(0,5)} precisou ser cancelado. Por favor, entre em contato para reagendar. Agradecemos a compreensão.`;
+            const cancellationLink = hasPhone ? `https://wa.me/${data.clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(cancellationMessage)}` : '#';
+            const cancellationLinkClass = hasPhone ? 'bg-red-600 hover:bg-red-500' : 'bg-gray-600 cursor-not-allowed opacity-50';
+
+            const linkTarget = hasPhone ? '_blank' : '_self';
+
+            element.innerHTML = `
+                <td class="p-4 font-semibold text-white">${formattedDate}</td>
+                <td class="p-4"><span class="text-lg font-bold text-cream">${data.time.substring(0, 5)}</span></td>
+                <td class="p-4">
+                    <p class="font-semibold text-white">${data.clientName || 'Cliente não informado'}</p>
+                    <p class="text-sm text-text-dark-gray">${data.service}</p>
+                </td>
+                <td class="p-4 hidden md:table-cell"><span class="text-cream">${data.barber}</span></td>
+                <td class="p-4 text-right">
+                    <div class="flex justify-end items-center gap-2">
+                        <a href="${reminderLink}" target="${linkTarget}" title="Enviar Lembrete" class="inline-block text-white p-2 rounded-full transition-colors ${reminderLinkClass}" ${!hasPhone ? 'onclick="return false;"' : ''}>
+                            <i data-lucide="message-circle" class="w-5 h-5"></i>
+                        </a>
+                        <a href="${cancellationLink}" target="${linkTarget}" title="Cancelar Horário" class="inline-block text-white p-2 rounded-full transition-colors ${cancellationLinkClass}" ${!hasPhone ? 'onclick="return false;"' : ''}>
+                            <i data-lucide="x-circle" class="w-5 h-5"></i>
+                        </a>
+                    </div>
+                </td>
+            `;
+            return element;
+        };
+
+        dateFilter.addEventListener('change', fetchAppointments);
+        barberFilter.addEventListener('change', fetchAppointments);
+
+        // --- LÓGICA DAS ANÁLISES ---
+        const servicePrices = {
+            'Corte': 45, 'Barba': 35, 'Sobrancelha': 20, 'Pezinho do Cabelo': 20,
+            'Corte + Desenho': 65, 'Corte e Barba': 80, 'Corte, Barba e Sobrancelha': 90,
+            'Corte, Sobrancelha e Cavanhaque': 75,
+        };
+
+        async function fetchAndProcessData() {
+            const appointmentsQuery = query(collection(db, "appointments"));
+            const querySnapshot = await getDocs(appointmentsQuery);
+            
+            const validAppointments = [];
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                if (!data.isContinuation) validAppointments.push(data);
+            });
+
+            let totalRevenue = 0;
+            const appointmentsByBarber = {};
+            const appointmentsByDay = {};
+            const today = new Date();
+            const thirtyDaysAgo = new Date().setDate(today.getDate() - 30);
+
+            validAppointments.forEach(appt => {
+                totalRevenue += servicePrices[appt.service] || 0;
+                if (appt.barber) appointmentsByBarber[appt.barber] = (appointmentsByBarber[appt.barber] || 0) + 1;
+                const apptDate = new Date(appt.date);
+                if (apptDate >= thirtyDaysAgo) {
+                    appointmentsByDay[appt.date] = (appointmentsByDay[appt.date] || 0) + 1;
+                }
+            });
+
+            const totalAppointments = validAppointments.length;
+            const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
+
+            updateSummaryCards(totalRevenue, totalAppointments, averageTicket);
+            renderBarberChart(appointmentsByBarber);
+            renderMovementChart(appointmentsByDay);
+        }
+
+        function updateSummaryCards(revenue, appointments, ticket) {
+            document.getElementById('total-revenue').textContent = `R$ ${revenue.toFixed(2).replace('.', ',')}`;
+            document.getElementById('total-appointments').textContent = appointments;
+            document.getElementById('average-ticket').textContent = `R$ ${ticket.toFixed(2).replace('.', ',')}`;
+        }
+
+        function renderBarberChart(data) {
+            document.getElementById('barber-chart-container').innerHTML = '<canvas id="barber-chart"></canvas>';
+            const ctx = document.getElementById('barber-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        label: 'Atendimentos', data: Object.values(data),
+                        backgroundColor: 'rgba(245, 245, 220, 0.8)',
+                        borderColor: 'rgba(245, 245, 220, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: 'var(--text-dark-gray)' }, grid: { color: 'var(--border-color)' } },
+                        x: { ticks: { color: 'var(--text-dark-gray)' }, grid: { color: 'var(--border-color)' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        function renderMovementChart(data) {
+            document.getElementById('movement-chart-container').innerHTML = '<canvas id="movement-chart"></canvas>';
+            const labels = [];
+            const values = [];
+            
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const dateString = date.toISOString().split('T')[0];
+                const [,, day] = dateString.split('-');
+                labels.push(day);
+                values.push(data[dateString] || 0);
+            }
+
+            const ctx = document.getElementById('movement-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Atendimentos', data: values, fill: true,
+                        backgroundColor: 'rgba(245, 245, 220, 0.1)',
+                        borderColor: 'rgba(245, 245, 220, 1)',
+                        tension: 0.3, pointBackgroundColor: 'rgba(245, 245, 220, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: 'var(--text-dark-gray)' }, grid: { color: 'var(--border-color)' } },
+                        x: { ticks: { color: 'var(--text-dark-gray)' }, grid: { color: 'var(--border-color)' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Inicialização
+        fetchAppointments();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
