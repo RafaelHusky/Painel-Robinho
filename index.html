@@ -176,14 +176,14 @@
                     <div id="barber-chart-container"><canvas id="barber-chart"></canvas></div>
                 </div>
                 <div class="bg-bg-card p-6 rounded-md border border-border-color">
-                    <h3 class="text-lg font-semibold text-white mb-4">Movimentação dos Últimos 30 Dias</h3>
+                    <h3 class="text-lg font-semibold text-white mb-4">Movimentação (-15 / +15 dias)</h3>
                     <div id="movement-chart-container"><canvas id="movement-chart"></canvas></div>
                 </div>
             </div>
         </main>
 
         <!-- Navegação Mobile -->
-        <nav class="mobile-nav md:hidden fixed bottom-0 left-0 right-0 bg-bg-black border-t border-border-color flex justify-around">
+        <nav class="mobile-nav md:hidden fixed bottom-0 left-0 right-0 bg-bg-black border-t border-border-color flex justify-around z-50">
             <a href="#" id="mobile-nav-agenda" class="nav-link flex-1 flex flex-col items-center justify-center p-3 active">
                 <i data-lucide="calendar-days" class="w-6 h-6"></i>
                 <span class="text-xs mt-1">Agenda</span>
@@ -193,6 +193,19 @@
                 <span class="text-xs mt-1">Análises</span>
             </a>
         </nav>
+        
+        <!-- Modal de Confirmação de Cancelamento -->
+        <div id="confirmation-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden items-center justify-center p-4">
+            <div class="bg-bg-card p-8 w-full max-w-md border border-border-color rounded-md">
+                <h3 class="text-2xl font-display text-white mb-4">Confirmar Cancelamento</h3>
+                <p class="text-text-light-gray mb-6">Tem certeza de que deseja remover este agendamento e notificar o cliente?</p>
+                <div class="flex gap-4">
+                    <button id="cancel-modal-btn" class="flex-1 border border-gray-700 text-white font-semibold py-3 hover:bg-gray-800 transition-colors duration-300 rounded-md">Voltar</button>
+                    <button id="confirm-cancellation-btn" class="flex-1 bg-red-600 text-white font-semibold py-3 hover:bg-red-500 transition-colors duration-300 rounded-md">Confirmar e Remover</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Firebase SDK -->
@@ -200,7 +213,7 @@
         // Importa as funções necessárias do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // Configuração do Firebase
         const firebaseConfig = {
@@ -257,6 +270,10 @@
         const appointmentsList = document.getElementById('appointments-list');
         const loadingStateAgenda = document.getElementById('loading-state-agenda');
         const emptyStateAgenda = document.getElementById('empty-state-agenda');
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const confirmCancellationBtn = document.getElementById('confirm-cancellation-btn');
+        const cancelModalBtn = document.getElementById('cancel-modal-btn');
+        let appointmentToDelete = null;
 
         const fetchAppointments = async () => {
             loadingStateAgenda.style.display = 'table-row';
@@ -273,7 +290,7 @@
                 const querySnapshot = await getDocs(appointmentsQuery);
                 
                 const allAppointments = [];
-                querySnapshot.forEach(doc => allAppointments.push(doc.data()));
+                querySnapshot.forEach(doc => allAppointments.push({ id: doc.id, ...doc.data() }));
                 
                 const today = new Date();
                 today.setHours(0,0,0,0);
@@ -321,14 +338,10 @@
             const formattedDate = `${day}/${month}/${year}`;
             
             const reminderLink = hasPhone ? `https://wa.me/${data.clientPhone.replace(/\D/g, '')}?text=Olá, ${data.clientName}. Lembrete do seu horário na Robinho Barber Shop no dia ${formattedDate} às ${data.time.substring(0,5)}!` : '#';
-            const reminderLinkClass = hasPhone ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-600 cursor-not-allowed opacity-50';
             
             const cancellationMessage = `Olá, ${data.clientName}. Informamos que seu agendamento na Robinho Barber Shop para o dia ${formattedDate} às ${data.time.substring(0,5)} precisou ser cancelado. Por favor, entre em contato para reagendar. Agradecemos a compreensão.`;
             const cancellationLink = hasPhone ? `https://wa.me/${data.clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(cancellationMessage)}` : '#';
-            const cancellationLinkClass = hasPhone ? 'bg-red-600 hover:bg-red-500' : 'bg-gray-600 cursor-not-allowed opacity-50';
-
-            const linkTarget = hasPhone ? '_blank' : '_self';
-
+            
             element.innerHTML = `
                 <td class="p-4 font-semibold text-white">${formattedDate}</td>
                 <td class="p-4"><span class="text-lg font-bold text-cream">${data.time.substring(0, 5)}</span></td>
@@ -339,20 +352,78 @@
                 <td class="p-4 hidden md:table-cell"><span class="text-cream">${data.barber}</span></td>
                 <td class="p-4 text-right">
                     <div class="flex justify-end items-center gap-2">
-                        <a href="${reminderLink}" target="${linkTarget}" title="Enviar Lembrete" class="inline-block text-white p-2 rounded-full transition-colors ${reminderLinkClass}" ${!hasPhone ? 'onclick="return false;"' : ''}>
+                        <a href="${reminderLink}" target="_blank" title="Enviar Lembrete" class="reminder-link inline-block text-white p-2 rounded-full transition-colors ${hasPhone ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-600 cursor-not-allowed opacity-50'}">
                             <i data-lucide="message-circle" class="w-5 h-5"></i>
                         </a>
-                        <a href="${cancellationLink}" target="${linkTarget}" title="Cancelar Horário" class="inline-block text-white p-2 rounded-full transition-colors ${cancellationLinkClass}" ${!hasPhone ? 'onclick="return false;"' : ''}>
+                        <button title="Cancelar Horário" class="cancel-btn inline-block text-white p-2 rounded-full transition-colors ${hasPhone ? 'bg-red-600 hover:bg-red-500' : 'bg-gray-600 cursor-not-allowed opacity-50'}" ${!hasPhone ? 'disabled' : ''}>
                             <i data-lucide="x-circle" class="w-5 h-5"></i>
-                        </a>
+                        </button>
                     </div>
                 </td>
             `;
+
+            element.querySelector('.cancel-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                if (hasPhone) {
+                    appointmentToDelete = { ...data, cancellationLink };
+                    confirmationModal.classList.remove('hidden');
+                    confirmationModal.classList.add('flex');
+                }
+            });
+
             return element;
         };
 
         dateFilter.addEventListener('change', fetchAppointments);
         barberFilter.addEventListener('change', fetchAppointments);
+        
+        // --- LÓGICA DO MODAL DE CONFIRMAÇÃO ---
+        cancelModalBtn.addEventListener('click', () => {
+            confirmationModal.classList.add('hidden');
+            confirmationModal.classList.remove('flex');
+            appointmentToDelete = null;
+        });
+
+        confirmCancellationBtn.addEventListener('click', async () => {
+            if (!appointmentToDelete) return;
+
+            const { id, cancellationLink, duration, date, time, barber } = appointmentToDelete;
+            
+            try {
+                const batch = writeBatch(db);
+                
+                // Deleta o agendamento principal
+                const mainDocQuery = query(collection(db, "appointments"), where("date", "==", date), where("time", "==", time), where("barber", "==", barber));
+                const mainDocSnapshot = await getDocs(mainDocQuery);
+                mainDocSnapshot.forEach(doc => batch.delete(doc.ref));
+
+                // Se for um serviço longo, deleta também a continuação
+                if (duration === 60) {
+                    const [hours, minutes] = time.split(':').map(Number);
+                    const nextSlotDate = new Date();
+                    nextSlotDate.setHours(hours, minutes + 30);
+                    const nextSlotTime = `${String(nextSlotDate.getHours()).padStart(2, '0')}:${String(nextSlotDate.getMinutes()).padStart(2, '0')}`;
+                    
+                    const continuationDocQuery = query(collection(db, "appointments"), where("date", "==", date), where("time", "==", nextSlotTime), where("barber", "==", barber));
+                    const continuationDocSnapshot = await getDocs(continuationDocQuery);
+                    continuationDocSnapshot.forEach(doc => batch.delete(doc.ref));
+                }
+
+                await batch.commit();
+
+                // Abre o WhatsApp e atualiza a agenda
+                window.open(cancellationLink, '_blank');
+                fetchAppointments();
+
+            } catch (error) {
+                console.error("Erro ao remover agendamento: ", error);
+                alert("Não foi possível remover o agendamento. Tente novamente.");
+            } finally {
+                confirmationModal.classList.add('hidden');
+                confirmationModal.classList.remove('flex');
+                appointmentToDelete = null;
+            }
+        });
 
         // --- LÓGICA DAS ANÁLISES ---
         const servicePrices = {
@@ -374,16 +445,12 @@
             let totalRevenue = 0;
             const appointmentsByBarber = {};
             const appointmentsByDay = {};
-            const today = new Date();
-            const thirtyDaysAgo = new Date().setDate(today.getDate() - 30);
-
+            
             validAppointments.forEach(appt => {
                 totalRevenue += servicePrices[appt.service] || 0;
                 if (appt.barber) appointmentsByBarber[appt.barber] = (appointmentsByBarber[appt.barber] || 0) + 1;
-                const apptDate = new Date(appt.date);
-                if (apptDate >= thirtyDaysAgo) {
-                    appointmentsByDay[appt.date] = (appointmentsByDay[appt.date] || 0) + 1;
-                }
+                
+                appointmentsByDay[appt.date] = (appointmentsByDay[appt.date] || 0) + 1;
             });
 
             const totalAppointments = validAppointments.length;
@@ -431,12 +498,13 @@
             const labels = [];
             const values = [];
             
-            for (let i = 29; i >= 0; i--) {
+            // Cria um período de 30 dias (15 passados, 15 futuros)
+            for (let i = -14; i <= 15; i++) {
                 const date = new Date();
-                date.setDate(date.getDate() - i);
+                date.setDate(date.getDate() + i);
                 const dateString = date.toISOString().split('T')[0];
-                const [,, day] = dateString.split('-');
-                labels.push(day);
+                const [year, month, day] = dateString.split('-');
+                labels.push(`${day}/${month}`);
                 values.push(data[dateString] || 0);
             }
 
